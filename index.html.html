@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Person × Situation</title>
+<style>
+:root{
+  --bg:#f7f7f5; --card:#ffffff; --ink:#1c1d1f; --muted:#6b6f76; --line:#e7e7e3;
+  --accent:#2d6a8a; --accent-soft:#e2edf3; --neg:#c0504d;
+  --c1:#E4572E; --c2:#3A9FBF; --c3:#7B61C9;
+  --r:16px; --ease:cubic-bezier(.2,.8,.2,1);
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased}
+h1,h2,h3{letter-spacing:-.015em;margin:0}
+h1{font-size:26px;font-weight:650}
+h2{font-size:21px;font-weight:600}
+h3{font-size:15px;font-weight:600}
+p{margin:.5em 0}
+.muted{color:var(--muted)} .small{font-size:13px}
+button{font:inherit;color:inherit}
+
+/* Header + Tabs */
+header{position:sticky;top:0;z-index:20;background:rgba(247,247,245,.86);
+  backdrop-filter:saturate(1.4) blur(12px);-webkit-backdrop-filter:saturate(1.4) blur(12px);
+  border-bottom:1px solid var(--line)}
+.bar{max-width:1180px;margin:0 auto;padding:0 20px;height:58px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.brand{font-weight:650;white-space:nowrap}
+.brand span{color:var(--muted);font-weight:400}
+nav.tabs{position:relative;display:flex;height:58px}
+nav.tabs button{background:none;border:0;padding:0 16px;cursor:pointer;color:var(--muted);font-weight:500;transition:color .25s}
+nav.tabs button:hover{color:var(--ink)}
+nav.tabs button.active{color:var(--ink)}
+.ind{position:absolute;bottom:-1px;left:0;height:2px;background:var(--ink);border-radius:2px;
+  transition:transform .45s var(--ease),width .45s var(--ease)}
+@media (max-width:640px){.brand span{display:none} nav.tabs button{padding:0 10px;font-size:14px}}
+
+main{max-width:1180px;margin:0 auto;padding:32px 20px 80px}
+.view{display:none}
+.view.active{display:block;animation:fadeUp .55s var(--ease)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:22px}
+.card-h{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.btn{border:1px solid var(--ink);background:var(--ink);color:#fff;border-radius:999px;padding:10px 20px;cursor:pointer;
+  font-weight:500;transition:transform .2s var(--ease),opacity .2s,background .2s}
+.btn:hover{transform:translateY(-1px)}
+.btn:disabled{opacity:.3;cursor:not-allowed;transform:none}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn.ghost:hover{border-color:var(--ink)}
+.btn.sm{padding:6px 14px;font-size:13px}
+.link{background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;padding:0;font-size:13px}
+
+.seg{display:inline-flex;background:#efefec;border-radius:999px;padding:3px;gap:2px;flex-wrap:wrap}
+.seg button{border:0;background:transparent;border-radius:999px;padding:6px 14px;cursor:pointer;font-size:13px;color:var(--muted);
+  transition:background .25s,color .25s,box-shadow .25s}
+.seg button.active{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.pill{display:inline-block;padding:5px 12px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-size:13px;font-weight:600}
+
+/* Fragebogen */
+.q-wrap{max-width:700px;margin:0 auto}
+.q-prog{height:3px;background:var(--line);border-radius:3px;overflow:hidden;margin-bottom:22px}
+.q-prog i{display:block;height:100%;width:0;background:var(--ink);transition:width .6s var(--ease)}
+#qStage{transition:opacity .22s,transform .3s var(--ease)}
+#qStage.out-l{opacity:0;transform:translateX(-18px)}
+#qStage.out-r{opacity:0;transform:translateX(18px)}
+#qStage.in-r{transition:none;opacity:0;transform:translateX(18px)}
+#qStage.in-l{transition:none;opacity:0;transform:translateX(-18px)}
+.q-card{padding:34px}
+.eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:600;margin-bottom:10px}
+.vignette{font-size:18px;line-height:1.6;border-left:3px solid var(--ink);padding:4px 0 4px 18px;margin:18px 0 26px}
+.question{font-weight:600;font-size:16px}
+.q-nav{display:flex;justify-content:space-between;align-items:center;margin-top:30px}
+.item{padding:20px 0;border-top:1px solid var(--line)}
+.item:first-of-type{border-top:0}
+.item-t{font-size:16px}
+
+.scale{display:grid;grid-template-columns:repeat(5,1fr);position:relative;margin:22px 0 4px}
+.scale::before{content:"";position:absolute;left:10%;right:10%;top:12px;height:2px;background:var(--line)}
+.opt{display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer;position:relative;text-align:center;padding:0 4px}
+.opt input{position:absolute;opacity:0;pointer-events:none}
+.opt .dot{width:26px;height:26px;border-radius:50%;background:#fff;border:2px solid #cdd0d4;position:relative;
+  transition:all .3s var(--ease)}
+.opt:hover .dot{border-color:var(--ink)}
+.opt input:checked + .dot{background:var(--ink);border-color:var(--ink);transform:scale(1.12);box-shadow:0 0 0 6px rgba(28,29,31,.08)}
+.opt input:focus-visible + .dot{outline:2px solid var(--accent);outline-offset:4px}
+.opt .lab{font-size:13px;color:var(--muted);line-height:1.3;transition:color .2s}
+.opt input:checked ~ .lab{color:var(--ink);font-weight:600}
+.err{color:var(--neg);font-size:13px;margin-top:10px}
+.done-ico{width:56px;height:56px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;font-size:26px;
+  animation:pop .6s var(--ease)}
+@keyframes pop{from{transform:scale(.4);opacity:0}to{transform:none;opacity:1}}
+
+/* Dashboard */
+.dash-head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:22px}
+.controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.note{background:#fff8e6;border:1px solid #f1e2b5;color:#7a5d12;border-radius:12px;padding:10px 14px;font-size:13px;margin-bottom:18px}
+.sec{margin:38px 0 14px;display:flex;align-items:baseline;gap:10px}
+.sec small{font-size:13px;color:var(--muted);font-weight:400}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.grid2 + .grid2{margin-top:18px}
+@media (max-width:920px){.grid2{grid-template-columns:1fr}}
+svg.plot{width:100%;height:auto;display:block;overflow:visible}
+.plot .grid{stroke:#efefec;stroke-width:1}
+.plot .axis{stroke:#9a9ea4;stroke-width:1}
+.plot .tick{font-size:11.5px;fill:var(--ink)}
+.plot .tlab{fill:var(--muted)}
+.plot .tnum{font-weight:600}
+.plot .xl{font-size:13px;font-weight:600}
+.plot .xs{font-size:11.5px;fill:var(--muted)}
+.plot .data{transition:opacity .7s var(--ease)}
+.plot .pl{fill:none;stroke:#b5b8bc;stroke-width:1.1;pointer-events:stroke;transition:stroke .2s,stroke-width .2s}
+.plot .pl:hover{stroke:var(--ink);stroke-width:2.4}
+.plot .bx{fill:rgba(255,255,255,.35);stroke-width:1.8}
+.plot .bm{stroke-width:3}
+.plot .bw{stroke-width:1.8}
+.plot .empty{font-size:14px;fill:var(--muted)}
+.cap{font-size:13px;color:var(--muted);min-height:3.2em;margin-top:8px;transition:opacity .3s}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.chip{font-size:12.5px;padding:4px 10px;border-radius:999px;background:#f3f3f0;color:var(--ink)}
+.chip i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:0}
+
+table.corr{border-collapse:separate;border-spacing:6px;width:100%;margin:6px -6px}
+table.corr th{font-size:12.5px;font-weight:600;text-align:center;color:var(--ink);padding:4px}
+table.corr th.rh{text-align:right;white-space:nowrap}
+table.corr td{text-align:center;border-radius:12px;height:86px;font-variant-numeric:tabular-nums;
+  animation:cellIn .6s var(--ease) both;transition:background .4s}
+table.corr td b{display:block;font-size:20px;font-weight:650}
+table.corr td span{font-size:11px;opacity:.8}
+table.corr td.diag{background:#f3f3f0;color:var(--muted)}
+@keyframes cellIn{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
+.sw{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px}
+
+.kv{display:grid;grid-template-columns:1fr auto;gap:10px 16px;font-size:14px;margin:10px 0 16px}
+.kv div:nth-child(even){font-weight:650;font-variant-numeric:tabular-nums;text-align:right}
+.hist{display:flex;align-items:flex-end;gap:4px;height:110px;margin-top:8px;border-bottom:1px solid var(--line)}
+.hist .hb{flex:1;background:var(--accent);border-radius:4px 4px 0 0;transition:height .8s var(--ease);min-height:0;position:relative}
+.hist .hb span{position:absolute;top:-17px;left:0;right:0;text-align:center;font-size:10.5px;color:var(--muted)}
+.hist-x{display:flex;gap:4px;font-size:10.5px;color:var(--muted);margin-top:4px}
+.hist-x span{flex:1;text-align:center}
+.read ul{padding-left:18px;margin:8px 0} .read li{margin:6px 0}
+
+/* z-Werte */
+.z-grid{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:18px;align-items:start}
+@media (max-width:980px){.z-grid{grid-template-columns:1fr}}
+svg.zsvg{width:100%;height:auto;display:block}
+.zsvg .zaxis{stroke:#8f9399;stroke-width:1}
+.zsvg .ztick{font-size:12px;fill:var(--ink);font-variant-numeric:tabular-nums}
+.zsvg .ztitle{font-size:11.5px;fill:var(--muted)}
+.zsvg .plab{font-size:13px;font-weight:600}
+.zsvg .mlab{font-size:12px;font-weight:600}
+.z-steps{display:flex;gap:6px;align-items:center}
+.z-steps i{width:8px;height:8px;border-radius:50%;background:#d6d7d3;cursor:pointer;transition:all .3s var(--ease)}
+.z-steps i.on{background:var(--ink);width:22px;border-radius:4px}
+.z-ctrl{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap}
+#zText{transition:opacity .3s}
+#zText h3{font-size:18px;margin-bottom:6px}
+.formula{display:flex;align-items:center;justify-content:center;gap:12px;font-size:22px;margin:18px 0 14px;font-family:"Times New Roman",Georgia,serif;font-style:italic}
+.frac{display:inline-flex;flex-direction:column;align-items:center}
+.frac .num{padding:0 6px 3px;border-bottom:1.5px solid var(--ink)}
+.frac .den{padding-top:3px}
+.formula span.p{transition:color .4s,background .4s;border-radius:5px;padding:0 3px}
+.formula span.p.hl{background:#fff1c9}
+table.zt{width:100%;border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-nums}
+table.zt th,table.zt td{padding:7px 4px;border-bottom:1px solid var(--line);text-align:right}
+table.zt th:first-child,table.zt td:first-child{text-align:left;color:var(--muted);font-weight:400}
+table.zt tr{transition:opacity .45s}
+table.zt tr.hide{opacity:.12}
+table.zt tr.strong td{font-weight:700}
+footer{max-width:1180px;margin:0 auto;padding:0 20px 40px;font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="bar">
+    <div class="brand">Person × Situation <span>· Persönlichkeitspsychologie</span></div>
+    <nav class="tabs">
+      <button data-tab="fragebogen">Fragebogen</button>
+      <button data-tab="auswertung">Auswertung</button>
+      <button data-tab="zwerte">z-Werte</button>
+      <span class="ind"></span>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <!-- ======================= FRAGEBOGEN ======================= -->
+  <section id="view-q" class="view">
+    <div class="q-wrap">
+      <div class="q-prog"><i id="qProg"></i></div>
+      <div id="qStage"></div>
+    </div>
+  </section>
+
+  <!-- ======================= AUSWERTUNG ======================= -->
+  <section id="view-dash" class="view">
+    <div class="dash-head">
+      <div>
+        <h1>Auswertung</h1>
+        <p class="muted small" id="updInfo">–</p>
+      </div>
+      <div class="controls">
+        <div class="seg" id="srcSeg">
+          <button data-src="live">Live-Daten</button>
+          <button data-src="demo">Demo-Daten</button>
+        </div>
+        <button class="btn ghost sm" id="refreshBtn">↻ Aktualisieren</button>
+        <span class="pill" id="nPill">n = 0</span>
+      </div>
+    </div>
+    <div class="note" id="dashNote" hidden></div>
+
+    <div class="sec"><h2>1 · Gesprächigkeit in drei Situationen</h2><small>Rohrmann-Skala 1 „gar nicht“ – 5 „sehr“</small></div>
+    <div class="grid2">
+      <div class="card">
+        <div class="card-h"><h3>Beobachtete Werte</h3><span class="muted small">Jede Linie = eine Person</span></div>
+        <div id="plotVig"></div>
+        <div class="chips" id="vigStats"></div>
+      </div>
+      <div class="card">
+        <div class="card-h">
+          <h3>Was wäre, wenn …?</h3>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn ghost sm" id="reshuffle" hidden>↻ neu mischen</button>
+            <button class="btn ghost sm" id="whatPlay">▶ Abspielen</button>
+          </div>
+        </div>
+        <div class="seg" id="whatSeg">
+          <button data-mode="obs">Beobachtet</button>
+          <button data-mode="noper">Keine Persönlichkeitsunterschiede</button>
+          <button data-mode="nosit">Keine Situationseinflüsse</button>
+        </div>
+        <div id="plotWhat"></div>
+        <p class="cap" id="whatCap"></p>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <div class="card-h">
+          <h3>Korrelationsmatrix</h3>
+          <div class="seg" id="corrSeg"><button data-m="pearson">Pearson r</button><button data-m="spearman">Spearman ρ</button></div>
+        </div>
+        <div id="corrHost"></div>
+        <p class="cap">In Klammern: 95 %-Konfidenzintervall (Fisher-z). Spearman ρ korreliert die Rangplätze und ist damit ein direktes Maß der Rangstabilität.</p>
+      </div>
+      <div class="card read">
+        <h3>Lesehilfe</h3>
+        <ul>
+          <li><b>Rangstabilität (relative Konsistenz):</b> Verlaufen die Linien weitgehend parallel, behalten Personen ihre relative Position über Situationen hinweg. Viele Kreuzungen bedeuten eine geringe Rangstabilität.</li>
+          <li><b>Situationseinfluss:</b> Unterschiedliche Höhen der Boxplots zeigen, dass die Situation das mittlere Verhalten aller verschiebt.</li>
+          <li><b>Starke Situation (Trauerfeier):</b> Klare Normen lassen wenig Spielraum. Die Varianz schrumpft, fast alle antworten ähnlich. Persönlichkeitsunterschiede kommen kaum zum Ausdruck, und die Korrelationen mit dieser Situation fallen typischerweise niedriger aus (Varianzeinschränkung).</li>
+          <li><b>Interaktionismus:</b> Verhalten = f(Person, Situation). Die beiden Szenarien rechts zeigen die Extreme, die Realität liegt dazwischen.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="sec"><h2>2 · Verträglichkeit (BFI-10)</h2><small>1 „trifft überhaupt nicht zu“ – 5 „trifft voll und ganz zu“</small></div>
+    <div class="grid2">
+      <div class="card">
+        <div class="card-h">
+          <h3>Item 1 vs. Item 2</h3>
+          <div class="seg" id="bfiSeg"><button data-r="0">Rohwerte</button><button data-r="1">Item 2 umgepolt</button></div>
+        </div>
+        <div id="plotBfi"></div>
+        <p class="cap" id="bfiCap"></p>
+      </div>
+      <div class="card">
+        <h3>Kennwerte</h3>
+        <div class="kv" id="bfiKv"></div>
+        <h3 style="margin-top:6px">Verteilung des Skalenwerts Verträglichkeit</h3>
+        <p class="muted small" style="margin:2px 0 18px">Mittelwert aus Item 1 und umgepoltem Item 2</p>
+        <div class="hist" id="bfiHist"></div>
+        <div class="hist-x" id="bfiHistX"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= Z-WERTE ======================= -->
+  <section id="view-z" class="view">
+    <div class="dash-head">
+      <div><h1>Wie entstehen z-Werte?</h1>
+      <p class="muted small">Zwei sehr unterschiedliche Verteilungen werden Schritt für Schritt standardisiert.</p></div>
+    </div>
+    <div class="z-grid">
+      <div class="card">
+        <div id="zHost"></div>
+        <div class="z-ctrl">
+          <button class="btn ghost sm" id="zPrev">← Zurück</button>
+          <div class="z-steps" id="zPips"></div>
+          <div style="display:flex;gap:8px">
+            <button class="btn ghost sm" id="zPlay">▶ Abspielen</button>
+            <button class="btn sm" id="zNext">Weiter →</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div id="zText"></div>
+        <div class="formula">
+          <span>z =</span>
+          <span class="frac">
+            <span class="num"><span class="p" id="fx">x</span> − <span class="p" id="fm">x̄</span></span>
+            <span class="den"><span class="p" id="fs">s</span></span>
+          </span>
+        </div>
+        <table class="zt" id="zTable"></table>
+      </div>
+    </div>
+  </section>
+</main>
+<footer>Antwortskala Vignetten nach Rohrmann (1978) · Verträglichkeitsitems aus dem BFI-10 (Rammstedt &amp; John, 2007)</footer>
+
+<script>
+/* =====================================================================
+   KONFIGURATION – hier die Web-App-URL aus Google Apps Script eintragen
+   (endet auf /exec). Leer lassen = Demo-Modus (lokale Speicherung).
+   ===================================================================== */
+const CONFIG = {
+  SCRIPT_URL: ''
+};
+
+/* ------------------------------ Inhalte ------------------------------ */
+const ROHRMANN = ['gar nicht','wenig','mittelmäßig','ziemlich','sehr'];
+const BFI_LABELS = ['trifft überhaupt nicht zu','trifft eher nicht zu','weder noch','trifft eher zu','trifft voll und ganz zu'];
+const VIG_QUESTION = 'Wie gesprächig sind Sie in dieser Situation?';
+const VIGNETTES = [
+  { key:'v1', short:'Geburtstagsfeier', strength:'mittelstarke Situation', title:'Auf einer Geburtstagsfeier',
+    text:'Sie sind auf die Geburtstagsfeier einer Freundin eingeladen und kennen etwa die Hälfte der Gäste. Im Wohnzimmer läuft Musik, die Leute stehen in kleinen Gruppen zusammen und unterhalten sich.' },
+  { key:'v2', short:'Zugfahrt', strength:'mittelstarke Situation', title:'Im Zug',
+    text:'Sie sitzen für eine zweistündige Fahrt im Zug. Neben Ihnen sitzt eine Person in Ihrem Alter, die gerade ihr Buch zugeklappt hat und aus dem Fenster schaut.' },
+  { key:'v3', short:'Trauerfeier', strength:'starke Situation', title:'Auf einer Trauerfeier',
+    text:'Sie nehmen an der Trauerfeier für einen entfernten Bekannten teil. Die Kapelle ist voll, die Angehörigen sitzen in der ersten Reihe. Der Redner beginnt gerade mit seiner Ansprache.' }
+];
+const BFI = [
+  { key:'bfi_vertrauen',   text:'… schenke anderen leicht Vertrauen, glaube an das Gute im Menschen.' },
+  { key:'bfi_kritisieren', text:'… neige dazu, andere zu kritisieren.' }
+];
+const PAL = ['#E4572E','#3A9FBF','#7B61C9'];
+
+/* ------------------------------ Helpers ------------------------------ */
+const $ = (q,el=document)=>el.querySelector(q);
+const $$ = (q,el=document)=>[...el.querySelectorAll(q)];
+const NS = 'http://www.w3.org/2000/svg';
+function svg(tag, attrs={}, parent){ const e=document.createElementNS(NS,tag); for(const k in attrs) e.setAttribute(k,attrs[k]); if(parent) parent.appendChild(e); return e; }
+const ease = t => t<.5 ? 4*t*t*t : 1-Math.pow(-2*t+2,3)/2;
+const lerp = (a,b,t)=>a+(b-a)*t;
+function tween(dur, fn, done){
+  const t0=performance.now(); let id, stop=false;
+  const f=now=>{ if(stop) return; const t=Math.min(1,(now-t0)/dur); fn(ease(t)); if(t<1) id=requestAnimationFrame(f); else if(done) done(); };
+  id=requestAnimationFrame(f); return ()=>{stop=true;cancelAnimationFrame(id);};
+}
+const fmt = (v,d=2)=> (v==null||!isFinite(v)) ? '—' : v.toFixed(d).replace('.',',').replace('-','−');
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function gauss(rng){let u=0;while(!u)u=rng();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*rng())}
+function hashStr(s){let h=2166136261;for(const c of String(s)){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return h>>>0}
+function shuffle(a,rng){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+
+/* ------------------------------ Statistik ------------------------------ */
+const mean = a => a.length ? a.reduce((s,v)=>s+v,0)/a.length : NaN;
+const sd = a => { if(a.length<2) return NaN; const m=mean(a); return Math.sqrt(a.reduce((s,v)=>s+(v-m)**2,0)/(a.length-1)); };
+function pearson(x,y){ const n=x.length; if(n<3) return NaN; const mx=mean(x),my=mean(y); let sxy=0,sxx=0,syy=0;
+  for(let i=0;i<n;i++){const dx=x[i]-mx,dy=y[i]-my;sxy+=dx*dy;sxx+=dx*dx;syy+=dy*dy}
+  return (sxx>0&&syy>0)? sxy/Math.sqrt(sxx*syy) : NaN; }
+function ranks(a){ const idx=a.map((v,i)=>[v,i]).sort((p,q)=>p[0]-q[0]); const r=new Array(a.length); let i=0;
+  while(i<idx.length){ let j=i; while(j+1<idx.length&&idx[j+1][0]===idx[i][0]) j++; const avg=(i+j)/2+1; for(let k=i;k<=j;k++) r[idx[k][1]]=avg; i=j+1; } return r; }
+const spearman = (x,y)=>pearson(ranks(x),ranks(y));
+function quant(s,p){ const h=(s.length-1)*p, lo=Math.floor(h), hi=Math.ceil(h); return s[lo]+(s[hi]-s[lo])*(h-lo); }
+function boxStats(a){ const s=[...a].sort((x,y)=>x-y); const q1=quant(s,.25),med=quant(s,.5),q3=quant(s,.75),iqr=q3-q1;
+  const lo=s.find(v=>v>=q1-1.5*iqr), hi=[...s].reverse().find(v=>v<=q3+1.5*iqr); return {q1,med,q3,lo,hi}; }
+function ci95(r,n){ if(!isFinite(r)||n<4) return null; const z=Math.atanh(Math.max(-.9999,Math.min(.9999,r))), se=1/Math.sqrt(n-3);
+  return [Math.tanh(z-1.96*se), Math.tanh(z+1.96*se)]; }
+
+/* ------------------------------ Demo-Daten ------------------------------ */
+function demoData(n=42){
+  const rng=mulberry32(11), cl=v=>Math.max(1,Math.min(5,Math.round(v))), out=[];
+  for(let i=0;i<n;i++){
+    const T=gauss(rng), A=gauss(rng);
+    out.push({ id:'demo'+i,
+      v1:cl(3.3+.95*T+.75*gauss(rng)), v2:cl(2.6+.85*T+.85*gauss(rng)), v3:cl(1.35+.3*T+.45*gauss(rng)),
+      bfi_vertrauen:cl(3.5+.8*A+.75*gauss(rng)), bfi_kritisieren:cl(2.8-.6*A+.85*gauss(rng)) });
+  }
+  return out;
+}
+
+/* ------------------------------ Backend ------------------------------ */
+const LS_LOCAL='pxs_local', LS_ID='pxs_id', LS_DONE='pxs_submitted';
+function getId(){ let id=localStorage.getItem(LS_ID); if(!id){ id=Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4); localStorage.setItem(LS_ID,id);} return id; }
+async function sendToBackend(p){
+  if(!CONFIG.SCRIPT_URL){
+    const arr=JSON.parse(localStorage.getItem(LS_LOCAL)||'[]'); arr.push(p); localStorage.setItem(LS_LOCAL,JSON.stringify(arr)); return;
+  }
+  const r=await fetch(CONFIG.SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(p)});
+  const j=await r.json();
+  if(!j.ok) throw new Error(j.error||'Unbekannter Fehler');
+}
+async function loadFromBackend(){
+  if(!CONFIG.SCRIPT_URL) return JSON.parse(localStorage.getItem(LS_LOCAL)||'[]');
+  const r=await fetch(CONFIG.SCRIPT_URL+'?t='+Date.now());
+  const j=await r.json();
+  if(!j.ok) throw new Error(j.error||'Fehler beim Laden');
+  return j.rows;
+}
+function cleanRows(rows){
+  const keys=['v1','v2','v3','bfi_vertrauen','bfi_kritisieren'];
+  return (rows||[]).map((r,i)=>{ const o={id:String(r.id||('r'+i))+'_'+i}; for(const k of keys) o[k]=Number(r[k]); return o; })
+    .filter(o=>keys.every(k=>Number.isInteger(o[k])&&o[k]>=1&&o[k]<=5));
+}
+
+/* ======================================================================
+   Paired plot (Boxplot + Punkte + Linien je Person), animierbar
+   ====================================================================== */
+class PairedPlot{
+  constructor(host,o){
+    this.o=Object.assign({W:560,H:420,m:{l:122,r:14,t:18,b:64},yMin:.5,yMax:5.5,jitter:.14,r:3.4,sub:[]},o);
+    const {W,H}=this.o;
+    this.svg=svg('svg',{viewBox:`0 0 ${W} ${H}`,class:'plot'},host);
+    this.gAx=svg('g',{},this.svg);
+    this.gData=svg('g',{class:'data'},this.svg);
+    this.gLines=svg('g',{},this.gData);
+    this.gBox=svg('g',{},this.gData);
+    this.gPts=svg('g',{},this.gData);
+    this.emptyT=svg('text',{x:(W+this.o.m.l)/2,y:H/2,'text-anchor':'middle',class:'empty'},this.svg);
+    this.boxEls=this.o.labels.map((_,k)=>{ const g=svg('g',{},this.gBox), c=this.o.colors[k];
+      return { g, w1:svg('line',{class:'bw',stroke:c},g), w2:svg('line',{class:'bw',stroke:c},g),
+               rect:svg('rect',{class:'bx',stroke:c,rx:2},g), med:svg('line',{class:'bm',stroke:c},g) }; });
+    this.bw=Math.min(84,(W-this.o.m.l-this.o.m.r)/this.o.labels.length*.36);
+    this.ids=null; this.cur=[]; this.cancel=null;
+    this.drawAxes();
+  }
+  x(k){ const {W,m,labels}=this.o; const w=(W-m.l-m.r)/labels.length; return m.l+w*(k+.5); }
+  y(v){ const {H,m,yMin,yMax}=this.o; return H-m.b-(v-yMin)/(yMax-yMin)*(H-m.t-m.b); }
+  drawAxes(){
+    const {W,H,m,yTicks,labels,colors,sub}=this.o, g=this.gAx;
+    yTicks.forEach(t=>{ const y=this.y(t.v);
+      svg('line',{x1:m.l,x2:W-m.r,y1:y,y2:y,class:'grid'},g);
+      const tx=svg('text',{x:m.l-10,y:y+4,'text-anchor':'end',class:'tick'},g);
+      tx.innerHTML=`<tspan class="tlab">${t.label}</tspan><tspan dx="7" class="tnum">${t.v}</tspan>`; });
+    svg('line',{x1:m.l,x2:m.l,y1:m.t,y2:H-m.b,class:'axis'},g);
+    svg('line',{x1:m.l,x2:W-m.r,y1:H-m.b,y2:H-m.b,class:'axis'},g);
+    this.subEls=[];
+    labels.forEach((l,k)=>{ const x=this.x(k);
+      svg('line',{x1:x,x2:x,y1:H-m.b,y2:H-m.b+5,class:'axis'},g);
+      const t=svg('text',{x,y:H-m.b+24,'text-anchor':'middle',class:'xl',fill:colors[k]},g); t.textContent=l;
+      const s=svg('text',{x,y:H-m.b+41,'text-anchor':'middle',class:'xs'},g); s.textContent=sub[k]||''; this.subEls.push(s); });
+  }
+  setSub(k,text){ this.subEls[k].textContent=text; }
+  update(rows,ids){
+    const same=this.ids && ids.length===this.ids.length && ids.every((d,i)=>d===this.ids[i]);
+    if(same) this.animateTo(rows); else this.setData(rows,ids);
+  }
+  setData(rows,ids){
+    if(this.cancel) this.cancel();
+    this.ids=ids.slice();
+    this.gLines.innerHTML=''; this.gPts.innerHTML='';
+    this.jit=ids.map(id=>(mulberry32(hashStr(id))()-.5)*2*this.o.jitter);
+    const op = rows.length>80 ? .35 : rows.length>40 ? .55 : .8;
+    this.lines=rows.map(()=>svg('polyline',{class:'pl','stroke-opacity':op},this.gLines));
+    this.pts=rows.map(r=>r.map((_,k)=>svg('circle',{r:this.o.r,fill:this.o.colors[k]},this.gPts)));
+    this.cur=rows.map(r=>r.slice());
+    this.emptyT.textContent = rows.length ? '' : 'Noch keine Daten';
+    this.gData.style.opacity=0;
+    this.paint(this.cur);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>this.gData.style.opacity=1));
+  }
+  animateTo(rows,dur=1150){
+    if(this.cancel) this.cancel();
+    const from=this.cur.map(r=>r.slice());
+    this.cancel=tween(dur,t=>{ this.cur=from.map((r,i)=>r.map((v,k)=>lerp(v,rows[i][k],t))); this.paint(this.cur); });
+  }
+  paint(rows){
+    rows.forEach((r,i)=>{
+      const p=r.map((v,k)=>[this.x(k),this.y(v+this.jit[i])]);
+      this.lines[i].setAttribute('points',p.map(q=>q[0].toFixed(1)+','+q[1].toFixed(1)).join(' '));
+      p.forEach((q,k)=>{ this.pts[i][k].setAttribute('cx',q[0]); this.pts[i][k].setAttribute('cy',q[1]); });
+    });
+    const L=(el,x1,y1,x2,y2)=>{el.setAttribute('x1',x1);el.setAttribute('y1',y1);el.setAttribute('x2',x2);el.setAttribute('y2',y2);};
+    this.boxEls.forEach((b,k)=>{
+      if(!rows.length){ b.g.setAttribute('opacity',0); return; }
+      b.g.setAttribute('opacity',1);
+      const st=boxStats(rows.map(r=>r[k])), cx=this.x(k), w=this.bw;
+      b.rect.setAttribute('x',cx-w/2); b.rect.setAttribute('width',w);
+      b.rect.setAttribute('y',this.y(st.q3)); b.rect.setAttribute('height',Math.max(0,this.y(st.q1)-this.y(st.q3)));
+      L(b.med,cx-w/2,this.y(st.med),cx+w/2,this.y(st.med));
+      L(b.w1,cx,this.y(st.q3),cx,this.y(st.hi));
+      L(b.w2,cx,this.y(st.q1),cx,this.y(st.lo));
+    });
+  }
+}
+
+/* ======================================================================
+   Tabs
+   ====================================================================== */
+const TABS={fragebogen:'view-q',auswertung:'view-dash',zwerte:'view-z'};
+function moveInd(){ const b=$('nav.tabs button.active'), ind=$('.ind'); if(!b) return;
+  ind.style.width=b.offsetWidth+'px'; ind.style.transform=`translateX(${b.offsetLeft}px)`; }
+function showTab(name){
+  if(!TABS[name]) name='fragebogen';
+  $$('.view').forEach(v=>v.classList.toggle('active',v.id===TABS[name]));
+  $$('nav.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));
+  moveInd();
+  history.replaceState(null,'','#'+name);
+  if(name==='auswertung') Dash.ensure();
+  if(name==='zwerte') Z.ensure();
+}
+$$('nav.tabs button').forEach(b=>b.addEventListener('click',()=>showTab(b.dataset.tab)));
+window.addEventListener('resize',moveInd);
+
+/* ======================================================================
+   Fragebogen
+   ====================================================================== */
+function scaleHTML(name,labels,val){
+  return `<div class="scale" role="radiogroup">${labels.map((l,i)=>
+    `<label class="opt"><input type="radio" name="${name}" value="${i+1}" ${val===i+1?'checked':''}><span class="dot"></span><span class="lab">${l}</span></label>`).join('')}</div>`;
+}
+const Q={
+  step:0, answers:{}, steps:['intro','v1','v2','v3','bfi','done'],
+  init(){ this.paint(); },
+  go(d){ const stage=$('#qStage'); stage.classList.add(d>0?'out-l':'out-r');
+    setTimeout(()=>{ this.step+=d; stage.classList.remove('out-l','out-r'); stage.classList.add(d>0?'in-r':'in-l');
+      this.paint(); void stage.offsetWidth; stage.classList.remove('in-r','in-l'); },200); },
+  paint(){
+    const st=this.steps[this.step], stage=$('#qStage');
+    $('#qProg').style.width=(this.step/(this.steps.length-1)*100)+'%';
+    stage.innerHTML=this.html(st); this.bind(st);
+  },
+  html(st){
+    const a=this.answers;
+    if(st==='intro'){
+      const already=localStorage.getItem(LS_DONE);
+      return `<div class="card q-card">
+        <div class="eyebrow">Kurzer Fragebogen · ca. 2 Minuten</div>
+        <h2>Wie gesprächig sind Sie – und wann?</h2>
+        <p style="margin-top:14px">Sie lesen gleich drei kurze Situationsbeschreibungen. Stellen Sie sich jede Situation möglichst lebhaft vor und geben Sie an, wie <b>gesprächig</b> Sie sich darin verhalten würden.</p>
+        <p>Danach folgen zwei kurze Aussagen über Sie. Es gibt keine richtigen oder falschen Antworten. Die Teilnahme ist anonym.</p>
+        ${already?'<p class="muted small">Hinweis: Von diesem Gerät wurde bereits ein Fragebogen abgeschickt. Bitte nur einmal teilnehmen.</p>':''}
+        <div class="q-nav"><span></span><button class="btn" id="qNext">Los geht’s →</button></div></div>`;
+    }
+    if(st.startsWith('v')){
+      const i=+st[1]-1, v=VIGNETTES[i];
+      return `<div class="card q-card">
+        <div class="eyebrow">Situation ${i+1} von 3</div>
+        <h2>${v.title}</h2>
+        <div class="vignette">${v.text}</div>
+        <div class="question">${VIG_QUESTION}</div>
+        ${scaleHTML(v.key,ROHRMANN,a[v.key])}
+        <div class="q-nav"><button class="btn ghost" id="qBack">← Zurück</button>
+        <button class="btn" id="qNext" ${a[v.key]?'':'disabled'}>Weiter →</button></div></div>`;
+    }
+    if(st==='bfi'){
+      return `<div class="card q-card">
+        <div class="eyebrow">Zum Schluss</div>
+        <h2>Inwieweit treffen die folgenden Aussagen auf Sie zu?</h2>
+        <p class="muted" style="margin-bottom:6px">Ich …</p>
+        ${BFI.map(b=>`<div class="item"><div class="item-t">${b.text}</div>${scaleHTML(b.key,BFI_LABELS,a[b.key])}</div>`).join('')}
+        <div class="err" id="qErr" hidden></div>
+        <div class="q-nav"><button class="btn ghost" id="qBack">← Zurück</button>
+        <button class="btn" id="qSend" ${BFI.every(b=>a[b.key])?'':'disabled'}>Absenden</button></div></div>`;
+    }
+    return `<div class="card q-card" style="text-align:center">
+      <div class="done-ico" style="margin:6px auto 18px">✓</div>
+      <h2>Vielen Dank!</h2>
+      <p class="muted">Ihre Antworten wurden gespeichert.</p>
+      <div style="display:flex;gap:10px;justify-content:center;margin-top:22px;flex-wrap:wrap">
+        <button class="btn" id="qDash">Zur Auswertung →</button></div>
+      <p style="margin-top:18px"><button class="link" id="qAgain">Erneut ausfüllen (nur für Demos)</button></p></div>`;
+  },
+  bind(st){
+    $$('#qStage input[type=radio]').forEach(inp=>inp.addEventListener('change',()=>{
+      this.answers[inp.name]=+inp.value;
+      const nx=$('#qNext'); if(nx) nx.disabled=false;
+      const sd_=$('#qSend'); if(sd_) sd_.disabled=!BFI.every(b=>this.answers[b.key]);
+    }));
+    $('#qNext')?.addEventListener('click',()=>this.go(1));
+    $('#qBack')?.addEventListener('click',()=>this.go(-1));
+    $('#qSend')?.addEventListener('click',()=>this.submit());
+    $('#qDash')?.addEventListener('click',()=>showTab('auswertung'));
+    $('#qAgain')?.addEventListener('click',()=>{ this.answers={}; this.step=0; this.paint(); });
+  },
+  async submit(){
+    const btn=$('#qSend'), err=$('#qErr');
+    const keys=['v1','v2','v3','bfi_vertrauen','bfi_kritisieren'];
+    if(!keys.every(k=>this.answers[k])){ err.hidden=false; err.textContent='Bitte alle Fragen beantworten.'; return; }
+    btn.disabled=true; btn.textContent='Wird gesendet …'; err.hidden=true;
+    const p={id:getId()}; keys.forEach(k=>p[k]=this.answers[k]);
+    try{ await sendToBackend(p); localStorage.setItem(LS_DONE,'1'); Dash.dirty=true; this.go(1); }
+    catch(e){ btn.disabled=false; btn.textContent='Erneut versuchen'; err.hidden=false; err.textContent='Senden fehlgeschlagen: '+e.message; }
+  }
+};
+
+/* ======================================================================
+   Dashboard
+   ====================================================================== */
+const Dash={
+  inited:false, dirty:true, src:'live', data:[], corrM:'pearson', recode:true, whatMode:'obs', seed:1, stopPlay:null, timer:null,
+  ensure(){ if(!this.inited){ this.init(); this.inited=true; } this.load(); },
+  init(){
+    const vigTicks=ROHRMANN.map((l,i)=>({v:i+1,label:l}));
+    const vigOpts={labels:VIGNETTES.map(v=>v.short),sub:VIGNETTES.map(v=>v.strength),colors:PAL,yTicks:vigTicks};
+    this.pVig=new PairedPlot($('#plotVig'),vigOpts);
+    this.pWhat=new PairedPlot($('#plotWhat'),vigOpts);
+    const bfiTicks=['überhaupt nicht','eher nicht','weder noch','eher','voll und ganz'].map((l,i)=>({v:i+1,label:l}));
+    this.pBfi=new PairedPlot($('#plotBfi'),{labels:['Vertrauen','Kritisieren'],sub:['Item 1','Item 2 · umgepolt'],colors:[PAL[0],PAL[1]],yTicks:bfiTicks,jitter:.17});
+
+    $$('#srcSeg button').forEach(b=>b.addEventListener('click',()=>{ this.src=b.dataset.src; this.dirty=true; this.load(); }));
+    $('#refreshBtn').addEventListener('click',()=>{ this.dirty=true; this.load(); });
+    $$('#whatSeg button').forEach(b=>b.addEventListener('click',()=>{ this.stop(); this.setWhat(b.dataset.mode); }));
+    $('#reshuffle').addEventListener('click',()=>{ this.seed++; this.setWhat('noper'); });
+    $('#whatPlay').addEventListener('click',()=>{ this.stopPlay? this.stop() : this.play(); });
+    $$('#corrSeg button').forEach(b=>b.addEventListener('click',()=>{ this.corrM=b.dataset.m; this.renderCorr(); this.segs(); }));
+    $$('#bfiSeg button').forEach(b=>b.addEventListener('click',()=>{ this.recode=b.dataset.r==='1'; this.renderBfi(true); this.segs(); }));
+    this.timer=setInterval(()=>{ if(this.src==='live' && CONFIG.SCRIPT_URL && $('#view-dash').classList.contains('active')){ this.dirty=true; this.load(true);} },30000);
+  },
+  segs(){
+    $$('#srcSeg button').forEach(b=>b.classList.toggle('active',b.dataset.src===this.src));
+    $$('#whatSeg button').forEach(b=>b.classList.toggle('active',b.dataset.mode===this.whatMode));
+    $$('#corrSeg button').forEach(b=>b.classList.toggle('active',b.dataset.m===this.corrM));
+    $$('#bfiSeg button').forEach(b=>b.classList.toggle('active',(b.dataset.r==='1')===this.recode));
+    $('#reshuffle').hidden=this.whatMode!=='noper';
+    $('#whatPlay').textContent=this.stopPlay?'❚❚ Stopp':'▶ Abspielen';
+  },
+  async load(silent){
+    this.segs();
+    if(!this.dirty) return;
+    this.dirty=false;
+    const note=$('#dashNote');
+    note.hidden=true;
+    let rows=[];
+    if(this.src==='demo'){ rows=demoData(); }
+    else{
+      if(!silent) $('#updInfo').textContent='Lade Daten …';
+      try{ rows=cleanRows(await loadFromBackend()); }
+      catch(e){ note.hidden=false; note.textContent='Daten konnten nicht geladen werden ('+e.message+'). Prüfe die SCRIPT_URL und die Bereitstellung.'; }
+      if(!CONFIG.SCRIPT_URL){ note.hidden=false; note.textContent='Kein Backend konfiguriert: Angezeigt werden nur Antworten, die in diesem Browser abgeschickt wurden. Trage die Web-App-URL in CONFIG.SCRIPT_URL ein.'; }
+      else if(rows.length<3 && note.hidden){ note.hidden=false; note.textContent='Noch sehr wenige Antworten. Korrelationen brauchen mindestens 3 Personen. Für eine Vorschau auf „Demo-Daten“ umschalten.'; }
+    }
+    this.data=rows;
+    $('#nPill').textContent='n = '+rows.length;
+    $('#updInfo').textContent=(this.src==='demo'?'Simulierte Beispieldaten':'Stand: '+new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})+' Uhr');
+    this.render();
+  },
+  render(){
+    const rows=this.data;
+    this.ids=rows.map((r,i)=>String(r.id||i));
+    this.vig=rows.map(r=>[r.v1,r.v2,r.v3]);
+    this.pVig.update(this.vig,this.ids);
+    this.stop(); this.whatMode='obs';
+    this.pWhat.update(this.vig,this.ids);
+    this.caption();
+    $('#vigStats').innerHTML=VIGNETTES.map((v,k)=>{ const c=this.vig.map(r=>r[k]);
+      return `<span class="chip"><i style="background:${PAL[k]}"></i>${v.short}: M = ${fmt(mean(c))}, SD = ${fmt(sd(c))}</span>`; }).join('');
+    this.renderCorr(); this.renderBfi(false); this.segs();
+  },
+  whatRows(mode){
+    const rows=this.vig;
+    if(mode==='nosit') return rows.map(r=>{ const m=mean(r); return r.map(()=>m); });
+    if(mode==='noper'){ const rng=mulberry32(this.seed*7919); const cols=[0,1,2].map(k=>shuffle(rows.map(r=>r[k]),rng)); return rows.map((_,i)=>cols.map(c=>c[i])); }
+    return rows;
+  },
+  setWhat(mode){ this.whatMode=mode; this.curWhat=this.whatRows(mode); this.pWhat.animateTo(this.curWhat); this.caption(); this.segs(); },
+  avgR(rows){ const c=[0,1,2].map(k=>rows.map(r=>r[k])); const rs=[pearson(c[0],c[1]),pearson(c[0],c[2]),pearson(c[1],c[2])].filter(isFinite); return rs.length?mean(rs):NaN; },
+  caption(){
+    const rows=this.whatMode==='obs'?this.vig:(this.curWhat||this.vig), r=this.avgR(rows), cap=$('#whatCap');
+    const txt={
+      obs:`So sehen die echten Daten aus: Situationseinflüsse (unterschiedliche Höhen) <i>und</i> Personenunterschiede (teilweise erhaltene Rangfolge). Mittlere Korrelation r̄ = ${fmt(r)}.`,
+      noper:`<b>Keine stabilen Persönlichkeitsunterschiede:</b> Die Werte jeder Situation werden zufällig neu auf die Personen verteilt. Die Situationsmittelwerte bleiben gleich, aber wer in einer Situation gesprächig ist, ist es in der nächsten nur zufällig auch. Die Linien kreuzen sich wild („Spaghetti“), r̄ = ${fmt(r)} ≈ 0.`,
+      nosit:`<b>Keine Situationseinflüsse:</b> Jede Person verhält sich überall gleich, nämlich auf ihrem persönlichen Mittelwert. Alle Linien verlaufen waagerecht und parallel, die Rangfolge ist perfekt stabil (r = 1). Die Boxplots liegen auf gleicher Höhe.`
+    }[this.whatMode];
+    cap.style.opacity=0; setTimeout(()=>{ cap.innerHTML=this.vig.length?txt:''; cap.style.opacity=1; },180);
+  },
+  play(){
+    const seq=['noper','obs','nosit','obs']; let i=0, alive=true, to;
+    const stepF=()=>{ if(!alive) return; if(seq[i]==='noper') this.seed++; this.setWhat(seq[i]); i=(i+1)%seq.length; to=setTimeout(stepF,3200); };
+    this.stopPlay=()=>{ alive=false; clearTimeout(to); };
+    stepF(); this.segs();
+  },
+  stop(){ if(this.stopPlay){ this.stopPlay(); this.stopPlay=null; } this.segs?.(); },
+  renderCorr(){
+    const cols=[0,1,2].map(k=>this.vig.map(r=>r[k])), n=this.vig.length, f=this.corrM==='spearman'?spearman:pearson;
+    const color=r=>{ if(!isFinite(r)) return ['#f3f3f0','#6b6f76'];
+      const a=Math.min(1,Math.abs(r)), base=r>=0?[45,106,138]:[192,80,77], c=base.map(v=>Math.round(255+(v-255)*a));
+      return [`rgb(${c.join(',')})`, a>.5?'#fff':'#1c1d1f']; };
+    let h='<table class="corr"><tr><th></th>'+VIGNETTES.map((v,k)=>`<th><span class="sw" style="background:${PAL[k]}"></span>${v.short}</th>`).join('')+'</tr>';
+    let d=0;
+    VIGNETTES.forEach((vi,i)=>{
+      h+=`<tr><th class="rh"><span class="sw" style="background:${PAL[i]}"></span>${vi.short}</th>`;
+      VIGNETTES.forEach((vj,j)=>{
+        const delay=(d++)*45;
+        if(i===j){ h+=`<td class="diag" style="animation-delay:${delay}ms"><b>1</b></td>`; return; }
+        const r=f(cols[i],cols[j]), c=ci95(r,n), [bg,fg]=color(r);
+        h+=`<td style="background:${bg};color:${fg};animation-delay:${delay}ms"><b>${fmt(r)}</b><span>${c?`[${fmt(c[0])}; ${fmt(c[1])}]`:'n zu klein'}</span></td>`;
+      });
+      h+='</tr>';
+    });
+    $('#corrHost').innerHTML=h+'</table>';
+  },
+  renderBfi(animate){
+    const rows=this.data, t=rows.map(r=>r.bfi_vertrauen), k=rows.map(r=>r.bfi_kritisieren), kr=k.map(v=>6-v);
+    const mat=rows.map((_,i)=>[t[i], this.recode?kr[i]:k[i]]);
+    this.pBfi.setSub(1, this.recode?'Item 2 · umgepolt (6 − x)':'Item 2 · Rohwert');
+    if(animate) this.pBfi.animateTo(mat); else this.pBfi.update(mat,this.ids);
+    const rRaw=pearson(t,k), rRec=pearson(t,kr), sb=isFinite(rRec)?2*rRec/(1+rRec):NaN;
+    const scale=rows.map((_,i)=>(t[i]+kr[i])/2);
+    $('#bfiKv').innerHTML=`
+      <div>r (Item 1, Item 2 roh)</div><div>${fmt(rRaw)}</div>
+      <div>r (Item 1, Item 2 umgepolt)</div><div>${fmt(rRec)}</div>
+      <div>Reliabilität (Spearman-Brown, 2 Items)</div><div>${fmt(sb)}</div>
+      <div>Verträglichkeit M (SD)</div><div>${fmt(mean(scale))} (${fmt(sd(scale))})</div>`;
+    const bins=[1,1.5,2,2.5,3,3.5,4,4.5,5], cnt=bins.map(b=>scale.filter(v=>v===b).length), mx=Math.max(1,...cnt);
+    const hist=$('#bfiHist');
+    if(!hist.children.length){ hist.innerHTML=bins.map(()=>'<div class="hb" style="height:0"><span></span></div>').join('');
+      $('#bfiHistX').innerHTML=bins.map(b=>`<span>${String(b).replace('.',',')}</span>`).join(''); }
+    requestAnimationFrame(()=>[...hist.children].forEach((el,i)=>{ el.style.height=(cnt[i]/mx*100)+'%'; el.firstChild.textContent=cnt[i]||''; }));
+    $('#bfiCap').innerHTML=this.recode
+      ? 'Item 2 ist negativ formuliert und wurde umgepolt (x′ = 6 − x). Jetzt zeigen hohe Werte bei beiden Items hohe Verträglichkeit, und die Linien verlaufen eher parallel. Erst jetzt dürfen die Items gemittelt werden.'
+      : 'Rohwerte: Wer verträglich ist, stimmt Item 1 zu und lehnt Item 2 ab. Die Linien kreuzen sich daher oft, die Korrelation ist negativ. Schalte auf „umgepolt“ um.';
+  }
+};
+
+/* ======================================================================
+   z-Werte-Animation
+   ====================================================================== */
+const Z={
+  inited:false, step:0, cancel:null, playT:null,
+  sets:[
+    {name:'Test A',desc:'Skala 0–5 · annähernd normalverteilt',counts:[3,7,13,14,9,4],min:0,color:PAL[0],anna:4},
+    {name:'Test B',desc:'Skala 1–10 · rechtsschief',counts:[9,13,11,8,5,3,2,1,1,1],min:1,color:PAL[1],anna:6}
+  ],
+  steps:[
+    {d0:-.6,d1:10.6,sh:0,sc:0,mean:0,sdb:0,ov:0,ax:'Rohwert'},
+    {d0:-.6,d1:10.6,sh:0,sc:0,mean:1,sdb:0,ov:0,ax:'Rohwert'},
+    {d0:-3.6,d1:7.4,sh:1,sc:0,mean:1,sdb:0,ov:0,ax:'Abweichung vom Mittelwert (x − x̄)'},
+    {d0:-3.6,d1:7.4,sh:1,sc:0,mean:1,sdb:1,ov:0,ax:'Abweichung vom Mittelwert (x − x̄)'},
+    {d0:-2.8,d1:3.6,sh:1,sc:1,mean:1,sdb:1,ov:0,ax:'z-Wert'},
+    {d0:-2.8,d1:3.6,sh:1,sc:1,mean:1,sdb:1,ov:1,ax:'z-Wert'}
+  ],
+  W:900,H:490,m:{l:30,r:30},
+  ensure(){ if(this.inited) return; this.inited=true; this.build(); },
+  build(){
+    this.svg=svg('svg',{viewBox:`0 0 ${this.W} ${this.H}`,class:'zsvg'},$('#zHost'));
+    this.gZero=svg('line',{stroke:'#1c1d1f','stroke-dasharray':'2 4','stroke-width':1},this.svg);
+    this.sets.forEach(S=>{
+      const vals=[]; S.dots=[];
+      S.counts.forEach((c,i)=>{ for(let k=0;k<c;k++){ S.dots.push({x:S.min+i,k}); vals.push(S.min+i); } });
+      S.m=mean(vals); S.s=sd(vals);
+      S.gAx=svg('g',{},this.svg);
+      S.title=svg('text',{class:'plab',fill:S.color},this.svg);
+      S.title.innerHTML=`${S.name} <tspan fill="#6b6f76" font-weight="400">· ${S.desc}</tspan>`;
+      S.mLine=svg('line',{stroke:S.color,'stroke-width':1.6,'stroke-dasharray':'5 4'},this.svg);
+      S.mLab=svg('text',{class:'mlab',fill:S.color,'text-anchor':'middle'},this.svg);
+      S.sdG=svg('g',{},this.svg);
+      S.sdL=svg('path',{stroke:'#1c1d1f','stroke-width':1.4,fill:'none'},S.sdG);
+      S.sdT=svg('text',{class:'mlab',fill:'#1c1d1f'},S.sdG);
+      S.circles=S.dots.map(()=>svg('circle',{r:4.4,fill:S.color,'fill-opacity':.85},this.svg));
+      const top=Math.max(...S.dots.filter(d=>d.x===S.anna).map(d=>d.k));
+      S.annaIdx=S.dots.findIndex(d=>d.x===S.anna&&d.k===top);
+      S.ring=svg('circle',{r:8,fill:'none',stroke:'#1c1d1f','stroke-width':1.6},this.svg);
+      S.annaT=svg('text',{class:'mlab','text-anchor':'middle',fill:'#1c1d1f'},this.svg); S.annaT.textContent='Anna';
+      S.annaLine=svg('line',{stroke:'#1c1d1f','stroke-width':1,'stroke-dasharray':'2 3'},this.svg);
+    });
+    $('#zPips').innerHTML=this.steps.map((_,i)=>`<i data-i="${i}"></i>`).join('');
+    $$('#zPips i').forEach(p=>p.addEventListener('click',()=>{ this.stopPlay(); this.go(+p.dataset.i); }));
+    $('#zNext').addEventListener('click',()=>{ this.stopPlay(); this.go(Math.min(this.steps.length-1,this.step+1)); });
+    $('#zPrev').addEventListener('click',()=>{ this.stopPlay(); this.go(Math.max(0,this.step-1)); });
+    $('#zPlay').addEventListener('click',()=>{ if(this.playT) this.stopPlay(); else this.play(); });
+    this.state={...this.steps[0]};
+    this.paint(this.state); this.ui();
+  },
+  play(){
+    $('#zPlay').textContent='❚❚ Stopp';
+    if(this.step===this.steps.length-1) this.go(0);
+    const next=()=>{ if(this.step>=this.steps.length-1){ this.stopPlay(); return; } this.go(this.step+1); this.playT=setTimeout(next,4200); };
+    this.playT=setTimeout(next,1400);
+  },
+  stopPlay(){ clearTimeout(this.playT); this.playT=null; $('#zPlay').textContent='▶ Abspielen'; },
+  go(i){
+    if(this.cancel) this.cancel();
+    const from={...this.state}, to=this.steps[i]; this.step=i; this.ui();
+    this.cancel=tween(1300,t=>{ const st={ax:to.ax}; for(const k in to) if(k!=='ax') st[k]=lerp(from[k],to[k],t); this.state=st; this.paint(st); });
+  },
+  paint(st){
+    const {W,m}=this, X=v=>m.l+(v-st.d0)/(st.d1-st.d0)*(W-m.l-m.r);
+    const T=(S,x)=>(x-st.sh*S.m)/(1+st.sc*(S.s-1));
+    const baseA=lerp(215,225,st.ov), baseB=445, downB=268;
+    this.gZero.setAttribute('x1',X(0)); this.gZero.setAttribute('x2',X(0));
+    this.gZero.setAttribute('y1',40); this.gZero.setAttribute('y2',lerp(baseB,420,st.ov));
+    this.gZero.setAttribute('opacity',st.sh*.35);
+    this.sets.forEach((S,si)=>{
+      const yOf=k=> si===0 ? baseA-(k*10+6) : lerp(baseB-(k*10+6), downB+k*10+6, st.ov);
+      S.dots.forEach((d,j)=>{ const c=S.circles[j]; c.setAttribute('cx',X(T(S,d.x))); c.setAttribute('cy',yOf(d.k)); });
+      // Achse
+      const base=si===0?baseA:baseB, g=S.gAx; g.innerHTML='';
+      g.setAttribute('opacity',si===0?1:1-st.ov);
+      svg('line',{x1:m.l,x2:W-m.r,y1:base,y2:base,class:'zaxis'},g);
+      for(let v=Math.ceil(st.d0);v<=Math.floor(st.d1);v++){ const x=X(v);
+        svg('line',{x1:x,x2:x,y1:base,y2:base+5,class:'zaxis'},g);
+        const t=svg('text',{x,y:base+19,'text-anchor':'middle',class:'ztick'},g); t.textContent=String(v).replace('-','−'); }
+      const at=svg('text',{x:W-m.r,y:base+36,'text-anchor':'end',class:'ztitle'},g); at.textContent=st.ax;
+      // Titel
+      S.title.setAttribute('x',m.l); S.title.setAttribute('y', si===0?28:lerp(258,478,st.ov));
+      // Mittelwert
+      const mx=X(T(S,S.m));
+      const y1=si===0?baseA:lerp(baseB,downB-6,st.ov), y2=si===0?baseA-162:lerp(baseB-160,downB+162,st.ov);
+      S.mLine.setAttribute('x1',mx); S.mLine.setAttribute('x2',mx); S.mLine.setAttribute('y1',y1); S.mLine.setAttribute('y2',y2);
+      S.mLine.setAttribute('opacity',st.mean);
+      S.mLab.setAttribute('x',mx); S.mLab.setAttribute('y', si===0?y2-6:lerp(y2-6,y2+14,st.ov));
+      S.mLab.textContent='x̄ = '+fmt(T(S,S.m)); S.mLab.setAttribute('opacity',st.mean);
+      // SD-Klammer
+      const xa=X(T(S,S.m-S.s)), xb=X(T(S,S.m+S.s));
+      const yb=si===0?baseA-150:lerp(baseB-146,downB+146,st.ov), dir=si===0?1:lerp(1,-1,st.ov);
+      S.sdL.setAttribute('d',`M${xa},${yb+5*dir} V${yb} H${xb} V${yb+5*dir}`);
+      S.sdT.setAttribute('x',xb+8); S.sdT.setAttribute('y',yb+4);
+      S.sdT.textContent='s = '+fmt(S.s/(1+st.sc*(S.s-1)));
+      S.sdG.setAttribute('opacity',st.sdb);
+      // Anna
+      const ad=S.dots[S.annaIdx], ax=X(T(S,ad.x)), ay=yOf(ad.k);
+      S.ring.setAttribute('cx',ax); S.ring.setAttribute('cy',ay);
+      S.annaT.setAttribute('x',ax); S.annaT.setAttribute('y', si===0?ay-14:lerp(ay-14,ay+22,st.ov));
+      S.annaLine.setAttribute('x1',ax); S.annaLine.setAttribute('x2',ax); S.annaLine.setAttribute('y1',ay); S.annaLine.setAttribute('y2',baseA);
+      S.annaLine.setAttribute('opacity',st.ov);
+    });
+  },
+  ui(){
+    const i=this.step, [A,B]=this.sets;
+    $$('#zPips i').forEach((p,j)=>p.classList.toggle('on',j===i));
+    $('#zPrev').disabled=i===0; $('#zNext').disabled=i===this.steps.length-1;
+    const zA=(A.anna-A.m)/A.s, zB=(B.anna-B.m)/B.s;
+    const better = zB>zA ? 'in Test B' : 'in Test A';
+    const T=[
+      ['Zwei Tests, zwei Skalen', `Test A misst auf einer Skala von 0 bis 5, die Werte sind annähernd normalverteilt. Test B nutzt eine Skala von 1 bis 10 und ist <b>rechtsschief</b>: Viele haben niedrige Werte, nur wenige sehr hohe.<br><br>Anna hat in A eine <b>4</b> und in B eine <b>6</b>. In welchem Test ist sie <i>relativ</i> besser? Die Rohwerte allein verraten das nicht.`],
+      ['Schritt 1 · Mittelwert x̄', `Für jede Verteilung bestimmen wir den Mittelwert (A: ${fmt(A.m)}, B: ${fmt(B.m)}). Er ist der Bezugspunkt: Liegt jemand darüber oder darunter?`],
+      ['Schritt 2 · Zentrieren: x − x̄', `Von jedem Wert ziehen wir den Mittelwert ab. Beide Verteilungen rutschen so, dass ihr Mittelwert bei <b>0</b> liegt. Positive Werte bedeuten überdurchschnittlich. Annas Abweichungen: A ${fmt(A.anna-A.m)}, B ${fmt(B.anna-B.m)}.`],
+      ['Schritt 3 · Standardabweichung s', `Eine Abweichung von +${fmt(A.anna-A.m)} in A ist aber nicht dasselbe wie +${fmt(B.anna-B.m)} in B, denn Test B streut viel stärker (s = ${fmt(B.s)} statt ${fmt(A.s)}). Die Standardabweichung gibt an, wie weit Werte <i>typischerweise</i> vom Mittelwert entfernt liegen.`],
+      ['Schritt 4 · Durch s teilen', `Jede Abweichung wird durch die Standardabweichung geteilt. Jetzt bedeutet eine Einheit auf der Achse in beiden Tests dasselbe: <b>eine Standardabweichung</b>. Beide Verteilungen haben nun x̄ = 0 und s = 1.`],
+      ['Vergleich auf einer gemeinsamen Skala', `Anna erreicht in A z = <b>${fmt(zA)}</b> und in B z = <b>${fmt(zB)}</b>. Relativ zu den anderen ist sie also ${better} besser.<br><br><b>Wichtig:</b> Die <i>Form</i> bleibt erhalten! B ist auch nach der Standardisierung schief. Die z-Transformation ist linear: Sie verschiebt und staucht, macht aber nichts normalverteilt.`]
+    ][i];
+    const zt=$('#zText'); zt.style.opacity=0;
+    setTimeout(()=>{ zt.innerHTML=`<div class="eyebrow">Schritt ${i} von ${this.steps.length-1}</div><h3>${T[0]}</h3><p>${T[1]}</p>`; zt.style.opacity=1; },200);
+    const hl={1:['fm'],2:['fx','fm'],3:['fs'],4:['fx','fm','fs'],5:[]}[i]||[];
+    ['fx','fm','fs'].forEach(id=>$('#'+id).classList.toggle('hl',hl.includes(id)));
+    const row=(lab,a,b,show,strong)=>`<tr class="${show?'':'hide'} ${strong?'strong':''}"><td>${lab}</td><td>${a}</td><td>${b}</td></tr>`;
+    $('#zTable').innerHTML=`<tr><th></th><th style="color:${A.color}">Test A</th><th style="color:${B.color}">Test B</th></tr>`+
+      row('Annas Rohwert x',A.anna,B.anna,true)+
+      row('Mittelwert x̄',fmt(A.m),fmt(B.m),i>=1)+
+      row('x − x̄',fmt(A.anna-A.m),fmt(B.anna-B.m),i>=2)+
+      row('Standardabweichung s',fmt(A.s),fmt(B.s),i>=3)+
+      row('z = (x − x̄) / s',fmt(zA),fmt(zB),i>=4,true);
+  }
+};
+
+/* ------------------------------ Start ------------------------------ */
+Dash.src = 'live';
+Q.init();
+showTab((location.hash||'#fragebogen').slice(1));
+window.addEventListener('load',moveInd);
+</script>
+</body>
+</html>
