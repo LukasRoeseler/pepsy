@@ -248,7 +248,7 @@ footer{max-width:1180px;margin:0 auto;padding:0 20px 40px;font-size:12px;color:v
           <button data-src="demo">Demo-Daten</button>
         </div>
         <button class="btn ghost sm" id="refreshBtn">↻ Aktualisieren</button>
-        <button class="btn sm dl-btn">⬇ Daten &amp; R-Skript</button>
+        <button class="btn sm dl-btn">⬇ Daten herunterladen</button>
         <span class="pill" id="nPill">n = 0</span>
       </div>
     </div>
@@ -350,13 +350,13 @@ footer{max-width:1180px;margin:0 auto;padding:0 20px 40px;font-size:12px;color:v
     </div>
 
     <!-- 4 · Datensatz -->
-    <div class="sec"><h2>4 · Datensatz</h2><small>Vorschau und Download für die eigene Auswertung in R</small></div>
+    <div class="sec"><h2>4 · Datensatz</h2><small>Vorschau und Download als CSV</small></div>
     <div class="card">
       <div class="card-h">
         <h3>Datensatzvorschau</h3>
-        <button class="btn sm dl-btn">⬇ Daten &amp; R-Skript herunterladen (.zip)</button>
+        <button class="btn sm dl-btn">⬇ Daten herunterladen (.csv)</button>
       </div>
-      <p class="muted small" style="margin:0">Eine Zeile pro Person, Werte 1–5. Item 2 (<code class="inl">bfi_kritisieren</code>) liegt als Rohwert vor und wird im Skript umgepolt. Die ZIP-Datei enthält <code class="inl">pxs_daten.csv</code> und <code class="inl">pxs_auswertung.R</code>. Das Skript erzeugt alle Kennwerte und Abbildungen dieser Seite und benötigt nur Base-R.</p>
+      <p class="muted small" style="margin:0">Eine Zeile pro Person, Werte 1–5. Item 2 (<code class="inl">bfi_kritisieren</code>) liegt als Rohwert vor und wird bei der Auswertung umgepolt. Die CSV-Datei enthält alle Antworten.</p>
       <div class="dt-wrap" id="dtHost"></div>
       <div class="dt-foot"><span id="dtInfo"></span><button class="link" id="dtMore" hidden></button></div>
     </div>
@@ -503,265 +503,8 @@ function cleanRows(rows){
     .filter(o=>ALL_KEYS.every(k=>Number.isInteger(o[k])&&o[k]>=1&&o[k]<=5));
 }
 
-/* ------------------------------ ZIP + Download ------------------------------ */
-const CRC_T=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t;})();
-function crc32(b){let c=0xFFFFFFFF;for(let i=0;i<b.length;i++)c=CRC_T[(c^b[i])&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0;}
-function makeZip(files){
-  const enc=new TextEncoder(), parts=[], central=[]; let off=0;
-  const d=new Date(), time=(d.getHours()<<11)|(d.getMinutes()<<5)|(d.getSeconds()>>1),
-        date=((d.getFullYear()-1980)<<9)|((d.getMonth()+1)<<5)|d.getDate();
-  for(const f of files){
-    const name=enc.encode(f.name), data=enc.encode(f.text), crc=crc32(data);
-    const lh=new DataView(new ArrayBuffer(30));
-    lh.setUint32(0,0x04034b50,true); lh.setUint16(4,20,true); lh.setUint16(6,0x0800,true); lh.setUint16(8,0,true);
-    lh.setUint16(10,time,true); lh.setUint16(12,date,true); lh.setUint32(14,crc,true);
-    lh.setUint32(18,data.length,true); lh.setUint32(22,data.length,true); lh.setUint16(26,name.length,true); lh.setUint16(28,0,true);
-    parts.push(lh.buffer,name,data);
-    const ch=new DataView(new ArrayBuffer(46));
-    ch.setUint32(0,0x02014b50,true); ch.setUint16(4,20,true); ch.setUint16(6,20,true); ch.setUint16(8,0x0800,true); ch.setUint16(10,0,true);
-    ch.setUint16(12,time,true); ch.setUint16(14,date,true); ch.setUint32(16,crc,true);
-    ch.setUint32(20,data.length,true); ch.setUint32(24,data.length,true); ch.setUint16(28,name.length,true);
-    ch.setUint16(30,0,true); ch.setUint16(32,0,true); ch.setUint16(34,0,true); ch.setUint16(36,0,true); ch.setUint32(38,0,true); ch.setUint32(42,off,true);
-    central.push(ch.buffer,name);
-    off+=30+name.length+data.length;
-  }
-  const cdSize=central.reduce((s,p)=>s+p.byteLength,0);
-  const end=new DataView(new ArrayBuffer(22));
-  end.setUint32(0,0x06054b50,true); end.setUint16(8,files.length,true); end.setUint16(10,files.length,true);
-  end.setUint32(12,cdSize,true); end.setUint32(16,off,true);
-  return new Blob([...parts,...central,end.buffer],{type:'application/zip'});
-}
 function saveBlob(blob,name){ const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name;
   document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1500); }
-
-/* ------------------------------ R-Skript ------------------------------ */
-function buildRScript(meta){
-  const rv=a=>'c('+a.map(s=>'"'+s+'"').join(', ')+')';
-  return String.raw`# =====================================================================
-#  Person × Situation · Auswertungsskript
-#  Reproduziert die Kennwerte und Abbildungen der Auswertungsseite.
-#  Datensatz : pxs_daten.csv  (${meta.src}, n = ${meta.n})
-#  Exportiert: ${meta.date}
-#  Benötigt nur Base-R, keine Zusatzpakete.
-# =====================================================================
-
-# Arbeitsverzeichnis auf den Ordner setzen, in dem Skript und CSV liegen.
-# RStudio: Session > Set Working Directory > To Source File Location
-# setwd("Pfad/zum/Ordner")
-
-d <- read.csv("pxs_daten.csv")
-str(d)
-
-# ---------------------------------------------------------------------
-# Variablen und Beschriftungen
-# ---------------------------------------------------------------------
-sit_vars   <- ${rv(SIT_KEYS)}
-sit_labels <- ${rv(VIGNETTES.map(v=>v.short))}
-sit_typ    <- ${rv(VIGNETTES.map(v=>v.strength))}
-sit_cols   <- ${rv(PAL)}
-bfi_cols   <- ${rv(BFI_COL)}
-rohrmann   <- c("gar nicht", "wenig", "mittelmäßig", "ziemlich", "sehr")
-bfi_lab    <- c("überhaupt nicht", "eher nicht", "weder noch", "eher", "voll und ganz")
-
-stopifnot(all(c(sit_vars, "bfi_vertrauen", "bfi_kritisieren") %in% names(d)))
-
-n <- nrow(d)
-k <- length(sit_vars)
-S <- as.matrix(d[, sit_vars])
-colnames(S) <- sit_labels
-
-# ---------------------------------------------------------------------
-# Hilfsfunktionen
-# ---------------------------------------------------------------------
-fmt <- function(x, digits = 2) {
-  ifelse(is.finite(x), formatC(x, format = "f", digits = digits, decimal.mark = ","), "NA")
-}
-
-# 95 %-Konfidenzintervall über Fisher-z (wie auf der Webseite)
-fisher_ci <- function(r, n) {
-  if (!is.finite(r) || n < 4) return(c(NA, NA))
-  z  <- atanh(max(-0.9999, min(0.9999, r)))
-  se <- 1 / sqrt(n - 3)
-  tanh(z + c(-1, 1) * 1.96 * se)
-}
-r_ci_text <- function(r, n) {
-  ci <- fisher_ci(r, n)
-  sprintf("%s [%s; %s]", fmt(r), fmt(ci[1]), fmt(ci[2]))
-}
-
-# Paired Plot: Linien je Person + Boxplots + Punkte
-paired_plot <- function(M, labels, cols, ylabs, sub = NULL, main = "", jitter = 0.14, seed = 1) {
-  M <- as.matrix(M); nn <- nrow(M); kk <- ncol(M)
-  set.seed(seed)
-  jit <- runif(nn, -jitter, jitter)   # gleicher vertikaler Versatz je Person
-  plot(NA, xlim = c(0.5, kk + 0.5), ylim = c(0.5, 5.5), axes = FALSE,
-       xlab = "", ylab = "", main = main)
-  abline(h = 1:5, col = "grey92")
-  axis(2, at = 1:5, labels = paste(ylabs, 1:5), las = 1, cex.axis = 0.8)
-  axis(1, at = 1:kk, labels = FALSE)
-  mtext(labels, side = 1, at = 1:kk, line = 1, col = cols, font = 2, cex = 0.85)
-  if (!is.null(sub)) mtext(sub, side = 1, at = 1:kk, line = 2.2, col = "grey45", cex = 0.7)
-  for (i in seq_len(nn)) lines(1:kk, M[i, ] + jit[i], col = adjustcolor("grey45", 0.45))
-  boxplot(M, at = 1:kk, add = TRUE, axes = FALSE, border = cols,
-          col = adjustcolor("white", 0.4), boxwex = 0.35, outline = FALSE, lwd = 1.5)
-  for (j in 1:kk) points(rep(j, nn), M[, j] + jit, pch = 19, cex = 0.7, col = cols[j])
-}
-
-# =====================================================================
-# 1 · Gesprächigkeit in fünf Situationen
-# =====================================================================
-deskriptiv <- data.frame(Situation = sit_labels, Typ = sit_typ,
-                         M = colMeans(S), SD = apply(S, 2, sd), row.names = NULL)
-print(deskriptiv, digits = 3)
-
-op <- par(mar = c(4.5, 8.5, 3, 1))
-paired_plot(S, sit_labels, sit_cols, rohrmann, sub = sit_typ,
-            main = "Beobachtete Werte (jede Linie = eine Person)")
-par(op)
-
-# --- Was wäre, wenn …? ------------------------------------------------
-mean_r <- function(M) {
-  R <- suppressWarnings(cor(M))
-  mean(R[upper.tri(R)], na.rm = TRUE)
-}
-set.seed(2024)
-S_noper <- apply(S, 2, sample)                      # Werte je Situation zufällig neu auf Personen verteilen
-S_nosit <- matrix(rowMeans(S), nrow = n, ncol = k)  # jede Person überall auf ihrem Mittelwert
-colnames(S_nosit) <- sit_labels
-
-op <- par(mfrow = c(1, 3), mar = c(4.5, 8.5, 3, 1))
-paired_plot(S,       sit_labels, sit_cols, rohrmann, sub = sit_typ,
-            main = paste("Beobachtet: mittleres r =", fmt(mean_r(S))))
-paired_plot(S_noper, sit_labels, sit_cols, rohrmann, sub = sit_typ,
-            main = paste("Keine Personenunterschiede: r =", fmt(mean_r(S_noper))))
-paired_plot(S_nosit, sit_labels, sit_cols, rohrmann, sub = sit_typ,
-            main = paste("Keine Situationseinflüsse: r =", fmt(mean_r(S_nosit))))
-par(op)
-# Hinweis: Die Permutation ist zufällig, r weicht daher leicht von der Webseite ab.
-
-# --- Korrelationsmatrix ------------------------------------------------
-corr_table <- function(M, method = "pearson") {
-  R <- cor(M, method = method)
-  out <- matrix("1", ncol(M), ncol(M), dimnames = list(colnames(M), colnames(M)))
-  for (i in seq_len(ncol(M))) for (j in seq_len(ncol(M)))
-    if (i != j) out[i, j] <- r_ci_text(R[i, j], nrow(M))
-  noquote(out)
-}
-cat("\nPearson r [95 %-KI, Fisher-z]\n");     print(corr_table(S, "pearson"))
-cat("\nSpearman rho [95 %-KI, Fisher-z]\n");  print(corr_table(S, "spearman"))
-
-corr_heatmap <- function(M, method, main) {
-  R <- cor(M, method = method); kk <- ncol(M)
-  pal <- colorRampPalette(c("#c0504d", "white", "#2d6a8a"))(201)
-  image(1:kk, 1:kk, t(R[kk:1, ]), col = pal, zlim = c(-1, 1), axes = FALSE,
-        xlab = "", ylab = "", main = main)
-  axis(1, at = 1:kk, labels = colnames(M), las = 2, cex.axis = 0.8, tick = FALSE)
-  axis(2, at = 1:kk, labels = rev(colnames(M)), las = 1, cex.axis = 0.8, tick = FALSE)
-  v <- as.vector(R)
-  text(rep(1:kk, each = kk), rep(kk:1, times = kk), fmt(v),
-       col = ifelse(abs(v) > 0.5, "white", "black"), font = 2)
-}
-op <- par(mfrow = c(1, 2), mar = c(7, 7, 3, 1))
-corr_heatmap(S, "pearson",  "Pearson r")
-corr_heatmap(S, "spearman", "Spearman rho")
-par(op)
-
-# --- Streuung der Antworten je Situation -------------------------------
-props <- sapply(sit_vars, function(v) prop.table(table(factor(d[[v]], levels = 1:5))))
-sds   <- apply(S, 2, sd)
-print(round(props, 2))
-
-op <- par(no.readonly = TRUE)
-layout(matrix(seq_len(2 * k), ncol = 2, byrow = TRUE), widths = c(2.2, 1))
-par(mar = c(2, 9, 1, 1), oma = c(1, 0, 3, 0))
-for (j in 1:k) {
-  barplot(props[, j], ylim = c(0, max(props)), names.arg = 1:5, col = sit_cols[j],
-          border = NA, axes = FALSE, cex.names = 0.8)
-  mtext(paste0(sit_labels[j], "\n", sit_typ[j]), side = 2, line = 1, las = 1,
-        adj = 1, cex = 0.75, col = sit_cols[j])
-  barplot(sds[j], horiz = TRUE, xlim = c(0, 2), col = sit_cols[j], border = NA, axes = FALSE)
-  text(sds[j], 0.7, paste("SD =", fmt(sds[j])), pos = 4, xpd = NA, cex = 0.85)
-}
-mtext("Antwortverteilung (Anteile 1-5)   |   Standardabweichung (0-2)",
-      outer = TRUE, line = 1, font = 2)
-par(op)
-
-# =====================================================================
-# 2 · Verträglichkeit (BFI-10)
-# =====================================================================
-d$bfi_kritisieren_um <- 6 - d$bfi_kritisieren      # Umpolen: x' = 6 - x
-r_roh  <- cor(d$bfi_vertrauen, d$bfi_kritisieren)
-r_um   <- cor(d$bfi_vertrauen, d$bfi_kritisieren_um)
-rel_sb <- 2 * r_um / (1 + r_um)                    # Spearman-Brown für 2 Items
-d$vertraeglichkeit <- (d$bfi_vertrauen + d$bfi_kritisieren_um) / 2
-
-cat("\nr (Item 1, Item 2 roh)            =", fmt(r_roh),
-    "\nr (Item 1, Item 2 umgepolt)       =", fmt(r_um),
-    "\nReliabilität (Spearman-Brown)     =", fmt(rel_sb),
-    "\nVerträglichkeit M (SD)            =", fmt(mean(d$vertraeglichkeit)),
-    paste0("(", fmt(sd(d$vertraeglichkeit)), ")"), "\n")
-
-op <- par(mfrow = c(1, 2), mar = c(4.5, 8.5, 3, 1))
-paired_plot(d[, c("bfi_vertrauen", "bfi_kritisieren")], c("Vertrauen", "Kritisieren"),
-            bfi_cols, bfi_lab, sub = c("Item 1", "Item 2 · Rohwert"),
-            main = paste("Rohwerte: r =", fmt(r_roh)), jitter = 0.17)
-paired_plot(d[, c("bfi_vertrauen", "bfi_kritisieren_um")], c("Vertrauen", "Kritisieren"),
-            bfi_cols, bfi_lab, sub = c("Item 1", "Item 2 · umgepolt (6 - x)"),
-            main = paste("Item 2 umgepolt: r =", fmt(r_um)), jitter = 0.17)
-par(op)
-
-tab <- table(factor(d$vertraeglichkeit, levels = seq(1, 5, 0.5)))
-bp <- barplot(tab, col = "#2d6a8a", border = NA, ylim = c(0, max(tab) * 1.15 + 0.5),
-              names.arg = sub(".", ",", names(tab), fixed = TRUE),
-              main = "Verteilung des Skalenwerts Verträglichkeit",
-              xlab = "Mittelwert aus Item 1 und umgepoltem Item 2", ylab = "Anzahl")
-text(bp, tab, ifelse(tab > 0, tab, ""), pos = 3, cex = 0.8)
-
-# =====================================================================
-# 3 · Verträglichkeit und Gesprächigkeit
-# =====================================================================
-d$gespraechigkeit <- rowMeans(S)                    # MW aller Situationsitems
-
-cron_alpha <- function(X) {
-  X <- as.matrix(X); kk <- ncol(X)
-  kk / (kk - 1) * (1 - sum(apply(X, 2, var)) / var(rowSums(X)))
-}
-
-r_vg   <- cor(d$vertraeglichkeit, d$gespraechigkeit)
-rho_vg <- cor(d$vertraeglichkeit, d$gespraechigkeit, method = "spearman")
-cat("\nPearson r                         =", r_ci_text(r_vg, n),
-    "\nSpearman rho                      =", fmt(rho_vg),
-    "\nErklärte Varianz r^2              =", paste0(fmt(100 * r_vg^2, 0), " %"),
-    "\nGesprächigkeit M (SD)             =", fmt(mean(d$gespraechigkeit)),
-    paste0("(", fmt(sd(d$gespraechigkeit)), ")"),
-    "\nCronbach alpha (5 Situationen)    =", fmt(cron_alpha(S)), "\n")
-
-# Signifikanztest (zusätzlich, nicht auf der Webseite dargestellt)
-print(cor.test(d$vertraeglichkeit, d$gespraechigkeit))
-
-r_einzel <- sapply(sit_vars, function(v) cor(d$vertraeglichkeit, d[[v]]))
-names(r_einzel) <- sit_labels
-print(round(r_einzel, 2))
-
-op <- par(mfrow = c(1, 2), mar = c(4.5, 4.5, 3, 1))
-set.seed(3)
-plot(jitter(d$vertraeglichkeit, amount = 0.1), jitter(d$gespraechigkeit, amount = 0.04),
-     xlim = c(0.75, 5.25), ylim = c(0.75, 5.25), pch = 19,
-     col = adjustcolor("#2d6a8a", 0.6),
-     xlab = "Verträglichkeit (MW BFI-Items, Item 2 umgepolt)",
-     ylab = "Gesprächigkeit (MW aller 5 Situationen)",
-     main = paste0("r = ", fmt(r_vg), ", rho = ", fmt(rho_vg)))
-fit <- lm(gespraechigkeit ~ vertraeglichkeit, data = d)
-xr  <- range(d$vertraeglichkeit)
-lines(xr, predict(fit, data.frame(vertraeglichkeit = xr)), lwd = 2)
-
-par(mar = c(4.5, 7, 3, 1))
-barplot(rev(r_einzel), horiz = TRUE, xlim = c(-1, 1), col = rev(sit_cols), border = NA,
-        las = 1, xlab = "Pearson r", main = "Verträglichkeit × einzelne Situationen")
-abline(v = 0, col = "grey40")
-par(op)
-`;
-}
 
 /* ======================================================================
    Paired plot (Boxplot + Punkte + Linien je Person), animierbar
@@ -966,7 +709,7 @@ const Dash={
     $('#whatPlay').addEventListener('click',()=>{ this.stopPlay? this.stop() : this.play(); });
     $$('#corrSeg button').forEach(b=>b.addEventListener('click',()=>{ this.corrM=b.dataset.m; this.renderCorr(); this.segs(); }));
     $$('#bfiSeg button').forEach(b=>b.addEventListener('click',()=>{ this.recode=b.dataset.r==='1'; this.renderBfi(true); this.segs(); }));
-    $$('.dl-btn').forEach(b=>b.addEventListener('click',()=>this.downloadZip()));
+    $$('.dl-btn').forEach(b=>b.addEventListener('click',()=>this.downloadCsv()));
     $('#dtMore').addEventListener('click',()=>{ this.previewAll=!this.previewAll; this.renderPreview(); });
     this.timer=setInterval(()=>{ if(this.src==='live' && CONFIG.SCRIPT_URL && $('#view-dash').classList.contains('active')){ this.dirty=true; this.load(true);} },30000);
   },
@@ -1145,12 +888,10 @@ const Dash={
     this.data.forEach((r,i)=>lines.push([i+1,...ALL_KEYS.map(k=>r[k])].join(',')));
     return lines.join('\r\n')+'\r\n';
   },
-  downloadZip(){
+  downloadCsv(){
     if(!this.data.length) return;
     const now=new Date(), stamp=now.toISOString().slice(0,10);
-    const meta={src:this.src==='demo'?'Demo-Daten (simuliert)':'Live-Daten', n:this.data.length, date:now.toLocaleString('de-DE')};
-    const blob=makeZip([{name:'pxs_daten.csv',text:this.csv()},{name:'pxs_auswertung.R',text:buildRScript(meta)}]);
-    saveBlob(blob,`person-situation_${this.src}_${stamp}.zip`);
+    saveBlob(new Blob(["\uFEFF"+this.csv()],{type:'text/csv;charset=utf-8'}),`person-situation_${this.src}_${stamp}.csv`);
   }
 };
 
