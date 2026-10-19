@@ -36,7 +36,8 @@ nav.tabs button:hover{color:var(--ink)}
 nav.tabs button.active{color:var(--ink)}
 .ind{position:absolute;bottom:-1px;left:0;height:2px;background:var(--ink);border-radius:2px;
   transition:transform .45s var(--ease),width .45s var(--ease)}
-@media (max-width:640px){.brand span{display:none} nav.tabs button{padding:0 10px;font-size:14px}}
+@media (max-width:640px){.brand span{display:none} nav.tabs button{padding:0 10px;font-size:14px}
+  nav.tabs button[data-tab="auswertung"],nav.tabs button[data-tab="zwerte"]{display:none}}
 
 main{max-width:1180px;margin:0 auto;padding:32px 20px 80px}
 .view{display:none}
@@ -498,6 +499,7 @@ function moveInd(){ const b=$('nav.tabs button.active'), ind=$('.ind'); if(!b) r
   ind.style.width=b.offsetWidth+'px'; ind.style.transform=`translateX(${b.offsetLeft}px)`; }
 function showTab(name){
   if(!TABS[name]) name='fragebogen';
+  if(matchMedia('(max-width:640px)').matches) name='fragebogen';
   $$('.view').forEach(v=>v.classList.toggle('active',v.id===TABS[name]));
   $$('nav.tabs button').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));
   moveInd();
